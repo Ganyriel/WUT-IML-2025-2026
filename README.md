@@ -7,7 +7,7 @@ Wut project for Introduction to Machine Learning
 - train.py: trains the model
 
 ## Files:
--loki_voice.wav: downloaded audio from YouTube video, 1:25 minutes long (https://www.youtube.com/watch?v=iYMp_s_Av0g) of Tom Hiddlestone (actor of Loki in Marvel) reads poetry (NOTE: i did not have the chance yet to listen to the audio)
+- Ozymandias.wav: example audio data recorded by Ganyriel, ~54 seconds long
 - spectrogram_data.py: creates melspectrograms
 
 ## Notes:
