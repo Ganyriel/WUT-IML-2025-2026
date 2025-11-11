@@ -1,179 +1,157 @@
 #!/usr/bin/env python3
-import os, io, re, zipfile, random
+import io
+import os
+import re
+import random
+import zipfile
 from collections import defaultdict
+from typing import Dict, Iterable, List, Tuple
+
 import soundfile as sf
 from tqdm import tqdm
 
-# ------------------------- CONFIG -------------------------
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-ZIP_PATH   = os.path.join(SCRIPT_DIR, "DR-VCTK.zip")
-OUT_DIR    = os.path.join(SCRIPT_DIR, "dr_vctk_subset")
+# ---- Defaults (edit if you need) ----
+SCRIPT_DIR   = os.path.abspath(os.path.dirname(__file__))
+ZIP_PATH     = os.path.join(SCRIPT_DIR, "DR-VCTK.zip")
+OUT_DIR      = os.path.join(SCRIPT_DIR, "dr_vctk_subset")
 
-# selection targets
+PREFERRED_DIR_MARKER = "device-recorded_trainset_wav_16k"
+
 ACCEPTED_N = 5
 REJECTED_N = 20
-ACCEPTED_MIN, ACCEPTED_MAX = 15*60, 20*60   # seconds
-REJECTED_MIN, REJECTED_MAX = 5*60,  6*60
+ACCEPTED_MIN, ACCEPTED_MAX = 15 * 60, 20 * 60  # seconds
+REJECTED_MIN, REJECTED_MAX = 5 * 60, 6 * 60    # seconds
 
-SEED = 42                 # change to reshuffle speakers
-PREFER = "trainset"       # prefer device-recorded_trainset_wav_16k
-# ----------------------------------------------------------
+SEED = 42
+# -------------------------------------
 
 random.seed(SEED)
 
-def _seconds(frames, sr): return frames / float(sr)
+def _speaker_id(path: str) -> str:
+    # filenames like p232_003.wav OR directories .../p232/...
+    base = os.path.basename(path)
+    m = re.match(r"([pP]\d{3})[_-]", base)
+    if m:
+        return m.group(1).lower()
+    # fallback to folder name if present
+    m2 = re.search(r"/(p\d{3})/", path, re.IGNORECASE)
+    return m2.group(1).lower() if m2 else ""
 
-def _pick_device_dirs(namelist):
-    """
-    Return list of directory prefixes to use, preferring:
-      device-recorded_trainset_wav_16k  then device-recorded_testset_wav_16k
-    Works regardless of an extra top-level 'DR-VCTK/' folder.
-    """
+def _pick_trainset_dirs(names: Iterable[str]) -> List[str]:
     dirs = set()
-    for n in namelist:
-        if not n.lower().endswith(".wav"): 
-            continue
-        parts = n.split("/")
-        # keep two/three leading parts to identify the bucket name
-        for i in range(1, min(4, len(parts))):
-            sub = "/".join(parts[:i]).lower()
-            if "device-recorded" in sub and "wav_16k" in sub:
-                dirs.add("/".join(parts[:i]))
-    # Prefer trainset
-    train = [d for d in dirs if "device-recorded_trainset_wav_16k" in d.lower()]
-    test  = [d for d in dirs if "device-recorded_testset_wav_16k" in d.lower()]
-    chosen = train if (PREFER == "trainset" and train) else (test if test else train)
-    return sorted(chosen), sorted(list(dirs))
+    for n in names:
+        if n.lower().endswith(".wav") and PREFERRED_DIR_MARKER in n:
+            parts = n.split("/")
+            for i in range(1, len(parts)):
+                sub = "/".join(parts[:i])
+                if PREFERRED_DIR_MARKER in sub:
+                    dirs.add(sub)
+                    break
+    return sorted(dirs)
 
-def _speaker_from_filename(path):
-    # filenames like p232_003.wav → speaker = p232
-    m = re.match(r"([pP]\d{3})[_-]", os.path.basename(path))
-    return m.group(1).lower() if m else None
-
-def _iter_wavs_in_dirs(zf, use_dirs):
-    """Yield (zip_member_path, speaker_id) for wavs inside selected directories."""
+def _iter_wavs(zf: zipfile.ZipFile, use_dirs: List[str]) -> Iterable[str]:
     for n in zf.namelist():
-        if not n.lower().endswith(".wav"):
-            continue
-        if any(n.startswith(d) for d in use_dirs):
-            spk = _speaker_from_filename(n)
-            if spk:
-                yield n, spk
+        if n.lower().endswith(".wav") and any(n.startswith(d) for d in use_dirs):
+            yield n
 
-def _duration_of_member(zf, member):
-    """Return duration (seconds) without writing to disk."""
+def _duration_from_member(zf: zipfile.ZipFile, member: str) -> float:
     with zf.open(member) as f:
         data, sr = sf.read(io.BytesIO(f.read()), dtype="float32", always_2d=False)
-    return len(data) / sr
+    return len(data) / float(sr)
 
-def _write_member_truncated(zf, member, dst_path, max_seconds=None):
-    """Write WAV to dst_path, truncating to max_seconds if set. Return seconds written."""
+def _write_truncated(zf: zipfile.ZipFile, member: str, dst_path: str, max_seconds: float) -> float:
     with zf.open(member) as f:
         data, sr = sf.read(io.BytesIO(f.read()), dtype="float32", always_2d=False)
-    if max_seconds is not None:
-        max_frames = int(max_seconds * sr)
-        if len(data) > max_frames:
-            data = data[:max_frames]
+    max_frames = int(max_seconds * sr)
+    if max_frames < len(data):
+        data = data[:max_frames]
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
     sf.write(dst_path, data, sr)
-    return len(data) / sr
+    return len(data) / float(sr)
 
-def main():
-    if not os.path.exists(ZIP_PATH):
-        raise SystemExit(f"[error] DR-VCTK.zip not found next to the script:\n  {ZIP_PATH}")
+def _select_speakers(spk_to_files: Dict[str, List[str]],
+                     need: int,
+                     min_seconds: float,
+                     zf: zipfile.ZipFile) -> List[str]:
+    candidates = list(spk_to_files.keys())
+    random.shuffle(candidates)
+    chosen: List[str] = []
+    for spk in candidates:
+        if len(chosen) >= need:
+            break
+        total = 0.0
+        for m in spk_to_files[spk]:
+            total += _duration_from_member(zf, m)
+            if total >= min_seconds:
+                chosen.append(spk)
+                break
+    return chosen
 
-    with zipfile.ZipFile(ZIP_PATH) as zf:
+def build_subset(
+    zip_path: str = ZIP_PATH,
+    out_dir: str = OUT_DIR,
+    accepted_n: int = ACCEPTED_N,
+    rejected_n: int = REJECTED_N,
+    accepted_caps: Tuple[int, int] = (ACCEPTED_MIN, ACCEPTED_MAX),
+    rejected_caps: Tuple[int, int] = (REJECTED_MIN, REJECTED_MAX),
+) -> str:
+    """
+    Build accepted/rejected speaker subsets from DR-VCTK trainset into `out_dir`.
+    Returns the output directory.
+    """
+    zip_path = os.path.abspath(zip_path)
+    out_dir = os.path.abspath(out_dir)
+
+    if not os.path.exists(zip_path):
+        raise FileNotFoundError(f"ZIP not found: {zip_path}")
+
+    with zipfile.ZipFile(zip_path) as zf:
         names = zf.namelist()
-        use_dirs, all_device_dirs = _pick_device_dirs(names)
+        use_dirs = _pick_trainset_dirs(names)
         if not use_dirs:
-            if all_device_dirs:
-                raise SystemExit(f"[error] Found device-recorded dirs {all_device_dirs} but couldn't pick one.")
-            raise SystemExit("[error] No device-recorded *_wav_16k folders found in the ZIP.")
-        print("[info] Using device directories:")
-        for d in use_dirs: print("  -", d)
+            raise RuntimeError(f"Expected '{PREFERRED_DIR_MARKER}' in ZIP contents.")
 
-        # Map speaker -> list of member paths (device-recorded only)
-        spk_to_files = defaultdict(list)
-        for member, spk in _iter_wavs_in_dirs(zf, use_dirs):
-            spk_to_files[spk].append(member)
+        # Map speaker -> file list
+        spk_to_files: Dict[str, List[str]] = defaultdict(list)
+        for member in _iter_wavs(zf, use_dirs):
+            spk = _speaker_id(member)
+            if spk:
+                spk_to_files[spk].append(member)
 
-        speakers = sorted(spk_to_files.keys())
-        if len(speakers) == 0:
-            raise SystemExit("[error] No speakers detected (filenames should start with p###_).")
+        # Choose speakers
+        accepted = _select_speakers(spk_to_files, accepted_n, accepted_caps[0], zf)
+        remaining = [s for s in spk_to_files.keys() if s not in accepted]
+        spk_to_files_remaining = {s: spk_to_files[s] for s in remaining}
+        rejected = _select_speakers(spk_to_files_remaining, rejected_n, rejected_caps[0], zf)
 
-        # Shuffle for reproducibility
-        random.shuffle(speakers)
+        if len(accepted) < accepted_n or len(rejected) < rejected_n:
+            raise RuntimeError("Not enough speakers with required minutes. Adjust caps or counts.")
 
-        # Helper to check if a speaker has at least X seconds available
-        def has_minutes(spk, min_seconds):
-            tot = 0.0
-            # iterate a few files until we exceed the threshold (avoid summing all files)
-            for m in spk_to_files[spk]:
-                tot += _duration_of_member(zf, m)
-                if tot >= min_seconds:
-                    return True
-            return False
-
-        # Pick accepted speakers (need >= ACCEPTED_MIN available)
-        accepted = []
-        for spk in speakers:
-            if len(accepted) >= ACCEPTED_N:
-                break
-            if has_minutes(spk, ACCEPTED_MIN):
-                accepted.append(spk)
-
-        # Pick rejected speakers from the remaining set
-        remaining = [s for s in speakers if s not in accepted]
-        rejected = []
-        for spk in remaining:
-            if len(rejected) >= REJECTED_N:
-                break
-            if has_minutes(spk, REJECTED_MIN):
-                rejected.append(spk)
-
-        if len(accepted) < ACCEPTED_N:
-            raise SystemExit(f"[error] Only found {len(accepted)}/{ACCEPTED_N} speakers with >= {ACCEPTED_MIN/60:.0f} min.")
-        if len(rejected) < REJECTED_N:
-            raise SystemExit(f"[error] Only found {len(rejected)}/{REJECTED_N} speakers with >= {REJECTED_MIN/60:.0f} min.")
-
-        print(f"[plan] accepted: {accepted}")
-        print(f"[plan] rejected: {rejected}")
-
-        # Write out audio with caps (truncate last file if needed)
         caps = {
-            "accepted": (ACCEPTED_MIN, ACCEPTED_MAX, accepted),
-            "rejected": (REJECTED_MIN, REJECTED_MAX, rejected),
+            "accepted": (accepted, accepted_caps),
+            "rejected": (rejected, rejected_caps),
         }
         written = defaultdict(float)
 
-        for tag, (min_s, max_s, spk_list) in caps.items():
+        for tag, (spk_list, (min_s, max_s)) in caps.items():
             for spk in spk_list:
                 files = spk_to_files[spk][:]
                 random.shuffle(files)
-                bar = tqdm(files, desc=f"{tag} {spk}", leave=False)
-                for member in bar:
+                for member in tqdm(files, desc=f"{tag} {spk}", leave=False):
                     if written[(tag, spk)] >= min_s:
                         break
-                    remaining_sec = max_s - written[(tag, spk)]
-                    if remaining_sec <= 0:
+                    remaining_s = max_s - written[(tag, spk)]
+                    if remaining_s <= 0:
                         break
-                    dst_dir = os.path.join(OUT_DIR, tag, spk)
-                    dst_path = os.path.join(dst_dir, os.path.basename(member))
-                    added = _write_member_truncated(zf, member, dst_path, max_seconds=remaining_sec)
+                    dst = os.path.join(out_dir, tag, spk, os.path.basename(member))
+                    added = _write_truncated(zf, member, dst, remaining_s)
                     written[(tag, spk)] += added
                 print(f"{tag} {spk}: {written[(tag, spk)]:.1f}s")
 
-        # Final checks
-        for spk in accepted:
-            if written[("accepted", spk)] < ACCEPTED_MIN:
-                raise SystemExit(f"[fail] accepted {spk} only {written[('accepted', spk)]:.1f}s")
-        for spk in rejected:
-            if written[("rejected", spk)] < REJECTED_MIN:
-                raise SystemExit(f"[fail] rejected {spk} only {written[('rejected', spk)]:.1f}s")
-
-    print("\n✅ DONE")
-    print(f"Output:\n  {OUT_DIR}")
-    print("Layout:\n  dr_vctk_subset/accepted/<p###>/*.wav\n  dr_vctk_subset/rejected/<p###>/*.wav")
+        print("\n[build] Output:", out_dir)
+        print("        dr_vctk_subset/accepted/<p###>/*.wav")
+        print("        dr_vctk_subset/rejected/<p###>/*.wav")
+        return out_dir
 
 if __name__ == "__main__":
-    main()
+    build_subset()
