@@ -1,0 +1,17 @@
+# virtual environment
+.venv/
+
+# data folders
+data/
+dr_vctk_subset/
+
+# large or compressed files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# audio files
+*.wav
+*.mp3
+*.flac
