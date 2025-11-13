@@ -12,3 +12,8 @@ Wut project for Introduction to Machine Learning
 
 ## Notes:
 -usage of melspectrograms is mandatory
+
+## Obtaining data:
+- To get the data run the script run_pipeline_to_get_data.py
+- You will end up with zipped dataset file, and all the recordings in folder data_recordings, divide per accepted/rejected and per speaker
+- In data_recordings there is also csv file with speaker id's, relative paths to recordings and labels
