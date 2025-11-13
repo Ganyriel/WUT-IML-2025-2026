@@ -1,9 +1,13 @@
 # virtual environment
 .venv/
 
-# data folders
-data/
-dr_vctk_subset/
+#pycache
+__pycache__/
+
+# generated data
+data_recordings/
+DR-VCTK.zip
+DR-VCTK.zip.part
 
 # large or compressed files
 *.zip
@@ -15,3 +19,7 @@ dr_vctk_subset/
 *.wav
 *.mp3
 *.flac
+
+# but not manual recordings
+!p001_manual_recordings/
+!p001_manual_recordings/**
