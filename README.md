@@ -6,6 +6,6 @@ Wut project for Introduction to Machine Learning
 - spectrogram_data.py: creates and plots melspectrograms
 
 ## Notes:
--usage of melspectrograms is mandatory
--data exploration: we should avoid data leaks
--data exploration: we should delete silent 'accepted' audio segments
+- usage of melspectrograms is mandatory 
+- data exploration: we should avoid data leaks
+- data exploration: we should delete silent 'accepted' audio segments
