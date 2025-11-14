@@ -13,12 +13,12 @@ hop_length = 512 # number of samples per time-step in spectrogram
 n_mels = 128 # number of bins in spectrogram. Height of image
 time_steps = 200 # number of time-steps. Width of image
 
-def spec_plot(audio_file):
+def spec_plot(path):
     """
     Plots a melspectrogram 
     
     Args: 
-        audio file - file in which the audio is stored
+        path - file in which the audio is stored
 
     Output: 
         a plotted melspectrogram
@@ -52,6 +52,19 @@ def scale_minmax(X, min=0.0, max=1.0):
     return X_scaled
 
 def spec_image(path, out, hop_length, n_mels):
+    """
+    Creates and saves a melspectrogram into a file
+    
+    Args: 
+        path - file in which the audio is stored
+        out - name of the png
+
+    Output: 
+        a melspectrogram in a file
+
+    """
+
+    
     y, sr = librosa.load(path, offset=1.0, duration=10.0, sr=22050)
     
 
@@ -79,7 +92,7 @@ def spec_image(path, out, hop_length, n_mels):
 # Example 
 if __name__ == "__main__":
     # setting input and output
-    path = 'c:/Users/Asus/Desktop/IML WUT/WUT-IML-2025-2026/Ozymandias.wav' #librosa.util.example_audio_file()
+    path = librosa.util.example('nutcracker') 
     out = 'out.png'
 
     # Plot
