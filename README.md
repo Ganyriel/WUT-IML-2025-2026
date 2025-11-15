@@ -2,8 +2,8 @@
 Wut project for Introduction to Machine Learning 
 
 ## Files:
-- Ozymandias.wav: example audio data recorded by Ganyriel, ~54 seconds long
 - spectrogram_data.py: creates and plots melspectrograms
+- TODO Add more files descriptions here
 
 
 ## Obtaining data:
