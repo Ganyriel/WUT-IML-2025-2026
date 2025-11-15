@@ -26,11 +26,9 @@ def spec_plot(path):
     """
 
     n_fft = 2048 # this is the number of samples in a window per fft
-    hop_length = 512 # The amount of samples we are shifting after each fft
-
-    
+        
     # Extracting info from audio file
-    audio_data, sampling_rate = librosa.load(audio_file)
+    audio_data, sampling_rate = librosa.load(path)
 
     # Copied from tutorial for melspectrograms
     mel_signal = librosa.feature.melspectrogram(y=audio_data, sr=sampling_rate, hop_length=hop_length, 
@@ -64,15 +62,8 @@ def spec_image(path, out, hop_length, n_mels):
 
     """
 
-    
     y, sr = librosa.load(path, offset=1.0, duration=10.0, sr=22050)
     
-
-    # extract a fixed length window
-    start_sample = 0 # starting at beginning
-    length_samples = time_steps*hop_length
-    window = y[start_sample:start_sample+length_samples]
-
     
     # use log-melspectrogram
     mels = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels,
@@ -88,7 +79,6 @@ def spec_image(path, out, hop_length, n_mels):
     skimage.io.imsave(out, img)
 
 
-
 # Example 
 if __name__ == "__main__":
     # setting input and output
@@ -96,7 +86,7 @@ if __name__ == "__main__":
     out = 'out.png'
 
     # Plot
-    #spec_plot(path)
+    spec_plot(path)
     
     # convert to PNG
     spec_image(path, out=out, hop_length=hop_length, n_mels=n_mels)
