@@ -1,0 +1,25 @@
+# virtual environment
+.venv/
+
+#pycache
+__pycache__/
+
+# generated data
+data_recordings/
+DR-VCTK.zip
+DR-VCTK.zip.part
+
+# large or compressed files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# audio files
+*.wav
+*.mp3
+*.flac
+
+# but not manual recordings
+!p001_manual_recordings/
+!p001_manual_recordings/**
