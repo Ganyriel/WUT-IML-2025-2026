@@ -23,3 +23,9 @@ DR-VCTK.zip.part
 # but not manual recordings
 !p001_manual_recordings/
 !p001_manual_recordings/**
+
+# result files
+confusion_matrix.png
+speaker_verification_model.h5
+test_results.csv
+training_history.png
