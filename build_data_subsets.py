@@ -125,7 +125,7 @@ def _write_segments_for_member(
     i = 0
     while n - i >= frames_min and total_written_frames < max_total_frames:
         remaining_frames = max_total_frames - total_written_frames
-        if remaining_frames <= 0:
+        if remaining_frames <= frames_max:
             break
         #seg_len = min(frames_max, n - i, remaining_frames)
         seg_len = frames_max
