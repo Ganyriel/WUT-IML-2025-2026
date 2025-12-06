@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Dict, Iterable, List, Tuple
 import soundfile as sf
 from tqdm import tqdm
+import numpy as np
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ZIP_PATH = os.path.join(SCRIPT_DIR, "DR-VCTK.zip")
@@ -15,8 +16,8 @@ REJECTED_N = 20
 ACCEPTED_MIN, ACCEPTED_MAX = 15 * 60, 16 * 60
 REJECTED_MIN, REJECTED_MAX = 5 * 60, 6 * 60
 
-SEGMENT_MIN = 2.0
-SEGMENT_MAX = 5.0
+SEGMENT_MIN = 0.5
+SEGMENT_MAX = 1.0
 
 ACCEPTED_SELECT_MARGIN = 600.0
 REJECTED_SELECT_MARGIN = 200.0
@@ -63,14 +64,26 @@ def _probe_speaker_duration(
 ) -> float:
     total = 0.0
     members = sorted(members)
+    #print("Members: ",len(members))
     for member in members:
         with zf.open(member) as f:
             data, sr = sf.read(io.BytesIO(f.read()), dtype="float32", always_2d=False)
         if getattr(data, "ndim", 1) > 1:
             data = data.mean(axis=1)
+
+        # Change?
+        # n = len(data)
+        # frames = int(np.floor(seg_min * sr))
+        # if n < frames:
+        #     continue
+        # i = 0
+        # while n-i >= frames and total < target_seconds:
+        #     seg_seconds = frames/float(sr)
+        
         frames_min = int(seg_min * sr)
         frames_max = int(seg_max * sr)
         n = len(data)
+        #print(n/float(sr))
         if n < frames_min:
             continue
         i = 0
@@ -114,7 +127,8 @@ def _write_segments_for_member(
         remaining_frames = max_total_frames - total_written_frames
         if remaining_frames <= 0:
             break
-        seg_len = min(frames_max, n - i, remaining_frames)
+        #seg_len = min(frames_max, n - i, remaining_frames)
+        seg_len = frames_max
         if seg_len < frames_min and total_written_frames > 0:
             break
         if seg_len < frames_min and total_written_frames == 0:
