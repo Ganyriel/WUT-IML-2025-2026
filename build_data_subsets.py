@@ -5,6 +5,7 @@ from typing import Dict, Iterable, List, Tuple
 import soundfile as sf
 from tqdm import tqdm
 import numpy as np
+import librosa
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ZIP_PATH = os.path.join(SCRIPT_DIR, "DR-VCTK.zip")
@@ -16,11 +17,11 @@ REJECTED_N = 20
 ACCEPTED_MIN, ACCEPTED_MAX = 15 * 60, 16 * 60
 REJECTED_MIN, REJECTED_MAX = 5 * 60, 6 * 60
 
-SEGMENT_MIN = 0.5
+SEGMENT_MIN = 1.0
 SEGMENT_MAX = 1.0
 
-ACCEPTED_SELECT_MARGIN = 600.0
-REJECTED_SELECT_MARGIN = 200.0
+ACCEPTED_SELECT_MARGIN = 1200.0 # default : 600.0
+REJECTED_SELECT_MARGIN = 400.0 # default : 200.0
 
 RESERVED_SPEAKERS = {"p001"}
 
@@ -62,33 +63,26 @@ def _probe_speaker_duration(
     seg_min: float,
     seg_max: float,
 ) -> float:
+    # Probing speaker duration without cutting silence
     total = 0.0
     members = sorted(members)
-    #print("Members: ",len(members))
+    # print("Members: ",len(members))
     for member in members:
         with zf.open(member) as f:
             data, sr = sf.read(io.BytesIO(f.read()), dtype="float32", always_2d=False)
         if getattr(data, "ndim", 1) > 1:
-            data = data.mean(axis=1)
-
-        # Change?
-        # n = len(data)
-        # frames = int(np.floor(seg_min * sr))
-        # if n < frames:
-        #     continue
-        # i = 0
-        # while n-i >= frames and total < target_seconds:
-        #     seg_seconds = frames/float(sr)
-        
+            data = data.mean(axis=1)   
         frames_min = int(seg_min * sr)
         frames_max = int(seg_max * sr)
         n = len(data)
-        #print(n/float(sr))
+        # print("Raw length: ", n/float(sr))
         if n < frames_min:
+            # print("R")
             continue
         i = 0
         while n - i >= frames_min and total < target_seconds:
-            seg_len = min(frames_max, n - i)
+            # seg_len = min(frames_max, n - i)
+            seg_len = frames_min
             seg_seconds = seg_len / float(sr)
             total += seg_seconds
             i += seg_len
@@ -113,6 +107,14 @@ def _write_segments_for_member(
         data, sr = sf.read(io.BytesIO(f.read()), dtype="float32", always_2d=False)
     if getattr(data, "ndim", 1) > 1:
         data = data.mean(axis=1)
+
+    # Filtering silence
+    # print("Max: ", np.max(data))
+    # print("Before: ", len(data)/sr)
+    # data, index = librosa.effects.trim(data) #, top_db = 100, frame_length = 256, hop_length = 64 #DONT USE TRIM, MAYBE SPLIT
+    # print("After: ", len(data)/sr)
+    # print()
+
     frames_min = int(seg_min * sr)
     frames_max = int(seg_max * sr)
     if len(data) < frames_min:
@@ -160,6 +162,8 @@ def _select_speakers(
         files = spk_to_files[spk]
         total = _probe_speaker_duration(zf, files, min_seconds, SEGMENT_MIN, SEGMENT_MAX)
         print(f"speaker: {spk}, total duration: {total}")
+        print("min_seconds: ", min_seconds)
+        print()
         if total >= min_seconds:
             chosen.append(spk)
     return chosen
@@ -205,6 +209,9 @@ def build_subset(
         remaining = [s for s in spk_to_files.keys() if s not in accepted and s not in RESERVED_SPEAKERS]
         spk_to_files_remaining = {s: spk_to_files[s] for s in remaining}
         rejected = _select_speakers(zf, spk_to_files_remaining, rejected_n, rejected_select_min)
+        print("Accepted: ", len(accepted))
+        print()
+        print("Rejected: ", len(rejected))
         if len(accepted) < accepted_n or len(rejected) < rejected_n:
             raise RuntimeError("Not enough speakers with required minutes. Adjust caps or counts.")
         caps = {"accepted": (accepted, accepted_caps), "rejected": (rejected, rejected_caps)}
