@@ -7,26 +7,31 @@ from tqdm import tqdm
 import numpy as np
 import librosa
 
+# Directories
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ZIP_PATH = os.path.join(SCRIPT_DIR, "DR-VCTK.zip")
 OUT_DIR = os.path.join(SCRIPT_DIR, "data_recordings")
 
 PREFERRED_DIR_MARKER = "device-recorded_trainset_wav_16k"
+
+# Accepted speakers + selection
 ACCEPTED_N = 5
 REJECTED_N = 20
 ACCEPTED_MIN, ACCEPTED_MAX = 15 * 60, 16 * 60
 REJECTED_MIN, REJECTED_MAX = 5 * 60, 6 * 60
 
-SEGMENT_MIN = 1.0
-SEGMENT_MAX = 1.0
-
 ACCEPTED_SELECT_MARGIN = 1200.0 # default : 600.0
 REJECTED_SELECT_MARGIN = 400.0 # default : 200.0
 
+# Add manual recordings here
 RESERVED_SPEAKERS = {"p001"}
 
+# Length of audio segments 
+SEGMENT_LENGTH = 1.0 # default 1.0, can be changed to 3.0
 
 def _pick_trainset_dirs(names: Iterable[str]) -> List[str]:
+    # Function for finding the data from the online dataset zip file
+
     dirs = set()
     for n in names:
         if PREFERRED_DIR_MARKER in n:
@@ -47,6 +52,8 @@ def _iter_wavs(zf: zipfile.ZipFile, use_dirs: Iterable[str]) -> Iterable[str]:
 
 
 def _speaker_id(member: str) -> str:
+    # Function for categorizing audio files
+
     m = re.search(r"/(p\d{3})/", member)
     if m:
         return m.group(1)
@@ -60,34 +67,41 @@ def _probe_speaker_duration(
     zf: zipfile.ZipFile,
     members: Iterable[str],
     target_seconds: float,
-    seg_min: float,
-    seg_max: float,
+    seg_length: float,
 ) -> float:
-    # Probing speaker duration without cutting silence
-
+    # File for probing speaker duration (without cutting silence)
+    # TODO see why it shows high number for available audio files
 
     total = 0.0
     members = sorted(members)
-    # print("Members: ",len(members))
+    
+    # Iterating through all files of a speaker
     for member in members:
+
+        # Taking the audio data from the zip file
         with zf.open(member) as f:
             data, sr = sf.read(io.BytesIO(f.read()), dtype="float32", always_2d=False)
+
+        # Making the data monochannel   
         if getattr(data, "ndim", 1) > 1:
             data = data.mean(axis=1)   
-        frames_min = int(seg_min * sr)
-        frames_max = int(seg_max * sr)
+
+        # Set length of audio segment in frames
+        frames = int(seg_length * sr)
+        # Calculate length of audio file in frames
         n = len(data)
-        # print("Raw length: ", n/float(sr))
-        if n < frames_min:
-            # print("R")
+        
+        # if audio too short
+        if n < frames:
             continue
+
+        # Count for used up frames in audio file
         i = 0
-        while n - i >= frames_min and total < target_seconds:
-            # seg_len = min(frames_max, n - i)
-            seg_len = frames_min
-            seg_seconds = seg_len / float(sr)
-            total += seg_seconds
-            i += seg_len
+
+        # Counting the number of segments that fit into the audio file
+        while n - i >= frames and total < target_seconds:
+            total += seg_length
+            i += frames
             if total >= target_seconds:
                 break
         if total >= target_seconds:
@@ -99,14 +113,20 @@ def _write_segments_for_member(
     zf: zipfile.ZipFile,
     member: str,
     dst_pattern: str,
-    seg_min: float,
-    seg_max: float,
+    seg_length: float,
     max_total_seconds: float,
 ) -> float:
+    # File for segmenting speaker files into segments
+
+    # If speaker gets no duration
     if max_total_seconds <= 0.0:
         return 0.0
+    
+    # Extracting data from files
     with zf.open(member) as f:
         data, sr = sf.read(io.BytesIO(f.read()), dtype="float32", always_2d=False)
+
+    # Making the audio data monochannel
     if getattr(data, "ndim", 1) > 1:
         data = data.mean(axis=1)
 
@@ -117,36 +137,60 @@ def _write_segments_for_member(
     # thresh_quiet = 0.8
     # if np.max(energies) <= thresh_quiet : 
     #     return 0.0
-    threshold = np.percentile(energies, 10)
 
+    threshold = np.percentile(energies, 10)
     mask = energies > threshold
     # print("Before: ", len(data)/sr)
     data = data[mask]
     # print("After: ", len(data)/sr)
 
-    frames_min = int(seg_min * sr)
-    frames_max = int(seg_max * sr)
-    if len(data) < frames_min:
-        return 0.0
-    max_total_frames = int(max_total_seconds * sr)
-    total_written_frames = 0
-    base, ext = os.path.splitext(dst_pattern)
-    idx = 0
+    # Setting segment length in frames
+    frames = int(seg_length * sr)
+
+    # Length of audio file in frames
     n = len(data)
+
+    # If audio file too short
+    if n < frames:
+        return 0.0
+
+    # Maximal amount of frames we want
+    max_total_frames = int(max_total_seconds * sr)
+
+    # Amount of written frames
+    total_written_frames = 0
+
+    # base of path
+    base, ext = os.path.splitext(dst_pattern)
+
+    # index of audio file for speaker
+    idx = 0
+    
+    # Written frames from audio file
     i = 0
-    while n - i >= frames_min and total_written_frames < max_total_frames:
+
+    # Segmenting audio file
+    while n - i >= frames and total_written_frames < max_total_frames:
+
+        # remaining frames we need
         remaining_frames = max_total_frames - total_written_frames
-        if remaining_frames <= frames_max:
+
+        # We will have more frames than we need
+        # TODO this part needed?
+        if remaining_frames <= frames:
             break
-        #seg_len = min(frames_max, n - i, remaining_frames)
-        seg_len = frames_max
-        if seg_len < frames_min and total_written_frames > 0:
-            break
-        if seg_len < frames_min and total_written_frames == 0:
-            break
-        segment = data[i : i + seg_len]
-        i += seg_len
+
+        # Segmenting
+        segment = data[i : i + frames]
+
+        # Keeping count of frames used
+        i += frames
+
+        # Adjusting path
         dst_path = f"{base}_{idx:03d}{ext}"
+
+        # Categorizing
+        # TODO idx += 1 redundant?
         if not os.path.exists(dst_path):
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
             sf.write(dst_path, segment, sr)
@@ -169,7 +213,7 @@ def _select_speakers(
         if len(chosen) >= need:
             break
         files = spk_to_files[spk]
-        total = _probe_speaker_duration(zf, files, min_seconds, SEGMENT_MIN, SEGMENT_MAX)
+        total = _probe_speaker_duration(zf, files, min_seconds, SEGMENT_LENGTH)
         print(f"speaker: {spk}, total duration: {total}")
         print("min_seconds: ", min_seconds)
         print()
@@ -240,9 +284,8 @@ def build_subset(
                         zf,
                         member,
                         dst,
-                        SEGMENT_MIN,
-                        SEGMENT_MAX,
-                        remaining_s,
+                        SEGMENT_LENGTH,
+                        remaining_s
                     )
                     written[(tag, spk)] += added
                 if written[(tag, spk)] < min_s:
