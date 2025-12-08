@@ -64,6 +64,8 @@ def _probe_speaker_duration(
     seg_max: float,
 ) -> float:
     # Probing speaker duration without cutting silence
+
+
     total = 0.0
     members = sorted(members)
     # print("Members: ",len(members))
@@ -109,11 +111,18 @@ def _write_segments_for_member(
         data = data.mean(axis=1)
 
     # Filtering silence
-    # print("Max: ", np.max(data))
+    energies = np.abs(data)
+
+    # Experimental silence filtering for audio files with only silence/noise (not tested)
+    # thresh_quiet = 0.8
+    # if np.max(energies) <= thresh_quiet : 
+    #     return 0.0
+    threshold = np.percentile(energies, 10)
+
+    mask = energies > threshold
     # print("Before: ", len(data)/sr)
-    # data, index = librosa.effects.trim(data) #, top_db = 100, frame_length = 256, hop_length = 64 #DONT USE TRIM, MAYBE SPLIT
+    data = data[mask]
     # print("After: ", len(data)/sr)
-    # print()
 
     frames_min = int(seg_min * sr)
     frames_max = int(seg_max * sr)
@@ -209,9 +218,10 @@ def build_subset(
         remaining = [s for s in spk_to_files.keys() if s not in accepted and s not in RESERVED_SPEAKERS]
         spk_to_files_remaining = {s: spk_to_files[s] for s in remaining}
         rejected = _select_speakers(zf, spk_to_files_remaining, rejected_n, rejected_select_min)
-        print("Accepted: ", len(accepted))
+        print("Number of accepted: ", len(accepted))
         print()
-        print("Rejected: ", len(rejected))
+        print("Number of rejected: ", len(rejected))
+        print()
         if len(accepted) < accepted_n or len(rejected) < rejected_n:
             raise RuntimeError("Not enough speakers with required minutes. Adjust caps or counts.")
         caps = {"accepted": (accepted, accepted_caps), "rejected": (rejected, rejected_caps)}

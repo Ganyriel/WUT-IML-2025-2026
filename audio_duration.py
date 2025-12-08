@@ -9,6 +9,7 @@ if os.path.exists(accepted_folder):
         if os.path.isdir(speaker_path):
             file_count = 0
             minimum = 10.0
+            maximum = 0.0
             sum = 0.0
             for file in os.listdir(speaker_path):
                 if file.endswith(('.wav', '.mp3', '.flac')):
@@ -20,10 +21,13 @@ if os.path.exists(accepted_folder):
                     # print(audio_length)
                     if (audio_length < minimum):
                         minimum = audio_length
+                    if (audio_length > maximum):
+                        maximum = audio_length
                     sum += audio_length
                     file_count += 1
             print(f"{speaker_folder}: {file_count} files")
-            print("Minumum: ", minimum)  
+            print("Minumum: ", minimum) 
+            print("Maximum : ", maximum) 
             print("Sum: ", sum)
             print()
 
@@ -34,6 +38,8 @@ if os.path.exists(rejected_folder):
         if os.path.isdir(speaker_path):
             file_count = 0
             minimum = 10.0
+            maximum = 0.0
+            sum = 0.0
             for file in os.listdir(speaker_path):
                 if file.endswith(('.wav', '.mp3', '.flac')):
                     relative_path = os.path.join(base_path, 'rejected', speaker_folder, file)
@@ -44,9 +50,14 @@ if os.path.exists(rejected_folder):
                     # print(audio_length)
                     if (audio_length < minimum):
                         minimum = audio_length
+                    if (audio_length > maximum):
+                        maximum = audio_length
+                    sum += audio_length
                     file_count += 1
             print(f"{speaker_folder}: {file_count} files")  
             print("Minumum: ", minimum) 
+            print("Maximum : ", maximum) 
+            print("Sum: ", sum)
             print()
 
 
