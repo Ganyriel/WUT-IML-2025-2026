@@ -2,8 +2,12 @@
 Wut project for Introduction to Machine Learning 
 
 ## Files:
-- spectrogram_data.py: creates and plots melspectrograms
-- TODO Add more files descriptions here
+- ### Preprocessing:
+  - spectrogram_data.py: creates and plots melspectrograms
+  - audio_duration.py: analyzes the duration of all audio files (after segmentation)
+  - TODO Add more files descriptions here
+- ### Training:
+  - trained_model.ipynb 
 
 
 ## Obtaining data:
