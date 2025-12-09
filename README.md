@@ -6,6 +6,7 @@ Wut project for Introduction to Machine Learning
 - remove absolute silence? (we only remove relative silence, i.e. parts which are % more silent than rest)
 - delete one of the manifests
 - check if no data leaks or similar issues appear, since results are too good
+- Clean training_model.ipynb (includes adding comments, putting functions in one place instead of them being scattered throughout the code)
   
 
 ## Files:
