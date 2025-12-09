@@ -1,6 +1,11 @@
 # WUT-IML-2025-2026
 Wut project for Introduction to Machine Learning 
 
+# TODO
+- don't remove silence for train set?
+- delete one of the manifests
+- check if no data leaks or similar issues appear, since results are too good
+
 ## Files:
 - ### Preprocessing:
   - spectrogram_data.py: creates and plots melspectrograms
