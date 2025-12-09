@@ -190,14 +190,12 @@ def _write_segments_for_member(
         dst_path = f"{base}_{idx:03d}{ext}"
 
         # Categorizing
-        # TODO idx += 1 redundant?
         if not os.path.exists(dst_path):
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
             sf.write(dst_path, segment, sr)
             total_written_frames += len(segment)
-            idx += 1
-        else:
-            idx += 1
+            
+        idx += 1
     return total_written_frames / float(sr)
 
 
@@ -207,6 +205,8 @@ def _select_speakers(
     need: int,
     min_seconds: float,
 ) -> List[str]:
+    # A function to choose speakers who have more recordings than minimum
+
     candidates = sorted(s for s in spk_to_files.keys() if s not in RESERVED_SPEAKERS)
     chosen: List[str] = []
     for spk in candidates:
@@ -230,21 +230,32 @@ def build_subset(
     accepted_caps: Tuple[int, int] = (ACCEPTED_MIN, ACCEPTED_MAX),
     rejected_caps: Tuple[int, int] = (REJECTED_MIN, REJECTED_MAX),
 ) -> str:
+    # Function to build the directories and copying and segmenting the audio files form zip file
+
+    # Initializing paths
     zip_path = os.path.abspath(zip_path)
     out_dir = os.path.abspath(out_dir)
     acc_dir = os.path.join(out_dir, "accepted")
     rej_dir = os.path.join(out_dir, "rejected")
+
+    # Creating directories
     for d in (acc_dir, rej_dir):
         if os.path.exists(d):
             shutil.rmtree(d)
     os.makedirs(acc_dir, exist_ok=True)
     os.makedirs(rej_dir, exist_ok=True)
+
+    # If zip not found
     if not os.path.exists(zip_path):
         raise FileNotFoundError(f"ZIP not found: {zip_path}")
+    
+    # Checking if values for accepted/rejected speakers are reasonable
     if accepted_caps[1] < accepted_caps[0]:
         raise ValueError("ACCEPTED_MAX must be >= ACCEPTED_MIN")
     if rejected_caps[1] < rejected_caps[0]:
         raise ValueError("REJECTED_MAX must be >= REJECTED_MIN")
+    
+
     with zipfile.ZipFile(zip_path) as zf:
         names = zf.namelist()
         use_dirs = _pick_trainset_dirs(names)
@@ -258,6 +269,7 @@ def build_subset(
         accepted_select_min = accepted_caps[0] + ACCEPTED_SELECT_MARGIN
         rejected_select_min = rejected_caps[0] + REJECTED_SELECT_MARGIN
 
+        
         accepted = _select_speakers(zf, spk_to_files, accepted_n, accepted_select_min)
         remaining = [s for s in spk_to_files.keys() if s not in accepted and s not in RESERVED_SPEAKERS]
         spk_to_files_remaining = {s: spk_to_files[s] for s in remaining}
