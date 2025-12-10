@@ -1,7 +1,10 @@
 # WUT-IML-2025-2026
 Wut project for Introduction to Machine Learning 
 
+
 # TODO
+- ## Urgent: I spoke with a group, 90% accuracy on train set, 70% accuracy on test set is good. We therefore probably have a data leak! 
+
 - don't remove silence for train set?
 - remove absolute silence? (we only remove relative silence, i.e. parts which are % more silent than rest)
 - delete one of the manifests
