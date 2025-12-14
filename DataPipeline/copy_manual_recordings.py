@@ -8,8 +8,8 @@ import numpy as np
 
 # Initializing paths
 SCRIPT_DIR = Path(__file__).resolve().parent
-SRC_DIR = SCRIPT_DIR / "p001_manual_recordings"
-DST_DIR = SCRIPT_DIR / "data_recordings" / "accepted" / "p001"
+SRC_DIR = os.path.join(SCRIPT_DIR, "../p001_manual_recordings")
+DST_DIR = os.path.join(SCRIPT_DIR, "../data_recordings/accepted/p001")
 
 # Length of audio segments
 SEGMENT_LENGTH = 1.0
