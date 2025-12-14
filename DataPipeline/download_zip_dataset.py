@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 DATA_URL = "https://datashare.ed.ac.uk/bitstream/handle/10283/3038/DR-VCTK.zip"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-ZIP_PATH = os.path.join(SCRIPT_DIR, "DR-VCTK.zip")
+ZIP_PATH = os.path.join(SCRIPT_DIR, "../DR-VCTK.zip")
 CHUNK_BYTES = 1024 * 512
 
 def download_zip(url: str = DATA_URL, dst_path: str = ZIP_PATH, overwrite: bool = False, timeout_s: Optional[float] = 60.0) -> str:

@@ -9,8 +9,8 @@ import librosa
 
 # Directories
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-ZIP_PATH = os.path.join(SCRIPT_DIR, "DR-VCTK.zip")
-OUT_DIR = os.path.join(SCRIPT_DIR, "data_recordings")
+ZIP_PATH = os.path.join(SCRIPT_DIR, "../DR-VCTK.zip")
+OUT_DIR = os.path.join(SCRIPT_DIR, "../data_recordings")
 
 PREFERRED_DIR_MARKER = "device-recorded_trainset_wav_16k"
 
