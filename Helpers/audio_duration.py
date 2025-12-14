@@ -2,7 +2,7 @@ import os
 import librosa
 
 # path to the data recordings folder
-base_path = r'data_recordings'
+base_path = r'../data_recordings'
 
 for ac in ['accepted', 'rejected']: 
     folder = os.path.join(base_path, ac)
