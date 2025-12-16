@@ -1,9 +1,10 @@
 from pathlib import Path
 import csv
+import os
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-SUBSET_ROOT = SCRIPT_DIR / "data_recordings"
-CSV_PATH = SUBSET_ROOT / "manifest.csv"
+SUBSET_ROOT = os.path.join(SCRIPT_DIR, "../data_recordings")
+CSV_PATH = os.path.join(SUBSET_ROOT, "manifest.csv")
 
 def build_manifest(subset_root: Path = SUBSET_ROOT, csv_path: Path = CSV_PATH) -> Path:
     subset_root = Path(subset_root).resolve()
@@ -23,7 +24,7 @@ def build_manifest(subset_root: Path = SUBSET_ROOT, csv_path: Path = CSV_PATH) -
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["speaker_id", "file_path", "label"])
+        w.writerow(["speaker_id", "path", "label"])
         w.writerows(rows)
     print(f"[manifest] {len(rows)} rows -> {csv_path}")
     return csv_path

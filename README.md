@@ -1,9 +1,24 @@
 # WUT-IML-2025-2026
 Wut project for Introduction to Machine Learning 
 
+
+# TODO
+- ## Urgent: I spoke with a group, 90% accuracy on train set, 70% accuracy on test set is good. We therefore probably have a data leak! 
+
+- don't remove silence for train set?
+- remove absolute silence? (we only remove relative silence, i.e. parts which are % more silent than rest)
+- delete one of the manifests
+- check if no data leaks or similar issues appear, since results are too good
+- Clean training_model.ipynb (includes adding comments, putting functions in one place instead of them being scattered throughout the code)
+  
+
 ## Files:
-- spectrogram_data.py: creates and plots melspectrograms
-- TODO Add more files descriptions here
+- ### Preprocessing:
+  - spectrogram_data.py: creates and plots melspectrograms
+  - audio_duration.py: analyzes the duration of all audio files (after segmentation)
+  - TODO Add more files descriptions here
+- ### Training:
+  - trained_model.ipynb 
 
 
 ## Obtaining data:
