@@ -218,6 +218,25 @@ def make_lr_callbacks(use_plateau=False):
         ))
     return callbacks
 
+def mc_dropout_predict(model, X, n_passes=30):
+    """
+    Monte Carlo Dropout prediction.
+    Returns:
+        mean_prob: (N,)
+        std_prob:  (N,) uncertainty
+    """
+    import numpy as np
+    import tensorflow as tf
+
+    probs = []
+    for _ in range(n_passes):
+        # training=True keeps Dropout active during inference
+        y = model(X, training=True)
+        probs.append(tf.reshape(y, [-1]).numpy())
+
+    probs = np.stack(probs, axis=0)
+    return probs.mean(axis=0), probs.std(axis=0)
+
 def build_model(
     input_shape,
     optimizer_name='adam',
