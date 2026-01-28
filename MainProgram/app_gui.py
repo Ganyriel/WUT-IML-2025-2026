@@ -11,7 +11,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(BASE_DIR, "..", "Model")))
 import model_utils as mu
 
-MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "results", "model_AdamW_Plateau.keras"))
+MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "Model", "results", "model_AdamW_Plateau.keras"))
 
 CAPTURE_SECONDS = 5
 SILENCE_TOP_DB = 35
