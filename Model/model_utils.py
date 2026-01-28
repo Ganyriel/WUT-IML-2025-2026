@@ -5,6 +5,7 @@ import librosa
 import tensorflow as tf
 from tensorflow.keras import layers, models
 
+
 # --- GLOBAL CONFIGURATION ---
 SR = 22050
 DURATION = 3.0  # Seconds
@@ -206,15 +207,61 @@ def split_dataset(X, y, speakers, df, train_ratio=0.7, val_ratio=0.15):
     )
 
 
-def build_model(input_shape, optimizer_name='adam', dropout_rate=0.0, learning_rate=0.001):
+def make_lr_callbacks(use_plateau=False):
+    callbacks = []
+    if use_plateau:
+        callbacks.append(tf.keras.callbacks.ReduceLROnPlateau(
+            monitor="val_loss",
+            factor=0.5,
+            patience=2,
+            min_lr=1e-6,
+            verbose=1
+        ))
+    return callbacks
+
+def mc_dropout_predict(model, X, n_passes=30):
     """
-    Builds a CNN model with configurable hyperparameters.
+    Monte Carlo Dropout prediction.
+    Returns:
+        mean_prob: (N,)
+        std_prob:  (N,) uncertainty
+    """
+    import numpy as np
+    import tensorflow as tf
+
+    probs = []
+    for _ in range(n_passes):
+        # training=True keeps Dropout active during inference
+        y = model(X, training=True)
+        probs.append(tf.reshape(y, [-1]).numpy())
+
+    probs = np.stack(probs, axis=0)
+    return probs.mean(axis=0), probs.std(axis=0)
+
+def build_model(
+    input_shape,
+    optimizer_name='adam',
+    dropout_rate=0.0,
+    learning_rate=0.001,
+    lr_schedule=None,          # None | "cosine" | "exp"
+    weight_decay=0.0,          # only used for AdamW
+    steps_per_epoch=None,      # needed for cosine
+    total_epochs=None,         # needed for cosine
+    adapt_data=None            # pass X_train to adapt() normalization
+):
+    """
+    Builds a CNN model with configurable hyperparameters + optional LR schedules and AdamW weight decay.
 
     Args:
         input_shape (tuple): Shape of the input data (H, W, C).
-        optimizer_name (str): Name of the optimizer ('adam' or 'sgd').
+        optimizer_name (str): 'adam', 'sgd', or 'adamw'.
         dropout_rate (float): Dropout rate for regularization.
-        learning_rate (float): Learning rate for the optimizer.
+        learning_rate (float): Base learning rate (or initial LR for schedules).
+        lr_schedule (str|None): None | "cosine" | "exp". (Plateau is a callback, not here.)
+        weight_decay (float): Weight decay for AdamW (e.g. 1e-4).
+        steps_per_epoch (int|None): Required for cosine schedule.
+        total_epochs (int|None): Required for cosine schedule.
+        adapt_data (np.ndarray|tf.Tensor|None): If provided, adapt() the Normalization layer.
 
     Returns:
         tf.keras.Model: Compiled Keras model.
@@ -222,39 +269,71 @@ def build_model(input_shape, optimizer_name='adam', dropout_rate=0.0, learning_r
     model = models.Sequential()
     model.add(layers.Input(shape=input_shape))
 
-    # Internal normalization layer
-    model.add(layers.Normalization())
+    # Internal normalization layer (optionally adapted)
+    norm = layers.Normalization()
+    model.add(norm)
 
     # Convolutional Block 1
     model.add(layers.Conv2D(32, (3, 3), activation='relu', padding='same'))
     model.add(layers.MaxPooling2D((2, 2)))
-    if dropout_rate > 0: model.add(layers.Dropout(dropout_rate))
+    if dropout_rate > 0:
+        model.add(layers.Dropout(dropout_rate))
 
     # Convolutional Block 2
     model.add(layers.Conv2D(64, (3, 3), activation='relu', padding='same'))
     model.add(layers.MaxPooling2D((2, 2)))
-    if dropout_rate > 0: model.add(layers.Dropout(dropout_rate))
+    if dropout_rate > 0:
+        model.add(layers.Dropout(dropout_rate))
 
     # Convolutional Block 3
     model.add(layers.Conv2D(128, (3, 3), activation='relu', padding='same'))
     model.add(layers.MaxPooling2D((2, 2)))
-    if dropout_rate > 0: model.add(layers.Dropout(dropout_rate))
+    if dropout_rate > 0:
+        model.add(layers.Dropout(dropout_rate))
 
     # Classifier Head
     model.add(layers.Flatten())
     model.add(layers.Dense(128, activation='relu'))
-    # Higher dropout is often used before the final layer
-    if dropout_rate > 0: model.add(layers.Dropout(0.5))
+    if dropout_rate > 0:
+        model.add(layers.Dropout(0.5))
     model.add(layers.Dense(1, activation='sigmoid'))
 
-    # Configure Optimizer
-    if optimizer_name.lower() == 'adam':
-        opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-    elif optimizer_name.lower() == 'sgd':
-        opt = tf.keras.optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
+    # --- Learning rate: constant or schedule ---
+    lr = learning_rate
+    if lr_schedule == "cosine":
+        if steps_per_epoch is None or total_epochs is None:
+            raise ValueError("lr_schedule='cosine' requires steps_per_epoch and total_epochs.")
+        lr = tf.keras.optimizers.schedules.CosineDecay(
+            initial_learning_rate=learning_rate,
+            decay_steps=steps_per_epoch * total_epochs
+        )
+    elif lr_schedule == "exp":
+        lr = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=learning_rate,
+            decay_steps=1000,
+            decay_rate=0.96,
+            staircase=True
+        )
+    elif lr_schedule is not None:
+        raise ValueError("lr_schedule must be None, 'cosine', or 'exp'.")
+
+    # --- Optimizer ---
+    opt_name = optimizer_name.lower()
+    if opt_name == 'adam':
+        opt = tf.keras.optimizers.Adam(learning_rate=lr)
+    elif opt_name == 'sgd':
+        opt = tf.keras.optimizers.SGD(learning_rate=lr, momentum=0.9)
+    elif opt_name == 'adamw':
+        opt = tf.keras.optimizers.AdamW(learning_rate=lr, weight_decay=weight_decay)
     else:
         print(f"Unknown optimizer {optimizer_name}, defaulting to Adam.")
-        opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        opt = tf.keras.optimizers.Adam(learning_rate=lr)
 
     model.compile(optimizer=opt, loss='binary_crossentropy', metrics=['accuracy'])
+
+    # adapt normalization if data provided ---
+
+    if adapt_data is not None:
+        norm.adapt(adapt_data)
+
     return model

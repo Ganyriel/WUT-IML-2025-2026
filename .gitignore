@@ -29,3 +29,6 @@ confusion_matrix.png
 speaker_verification_model.h5
 test_results.csv
 training_history.png
+
+#Model files
+Model/results/*.keras
