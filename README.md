@@ -1,24 +1,6 @@
 # WUT-IML-2025-2026
-Wut project for Introduction to Machine Learning 
-
-
-# TODO
-- ## Urgent: I spoke with a group, 90% accuracy on train set, 70% accuracy on test set is good. We therefore probably have a data leak! 
-
-- don't remove silence for train set?
-- remove absolute silence? (we only remove relative silence, i.e. parts which are % more silent than rest)
-- delete one of the manifests
-- check if no data leaks or similar issues appear, since results are too good
-- Clean training_model.ipynb (includes adding comments, putting functions in one place instead of them being scattered throughout the code)
-  
-
-## Files:
-- ### Preprocessing:
-  - spectrogram_data.py: creates and plots melspectrograms
-  - audio_duration.py: analyzes the duration of all audio files (after segmentation)
-  - TODO Add more files descriptions here
-- ### Training:
-  - trained_model.ipynb 
+Voice Classifier project for Introduction to Machine Learning 
+ 
 
 
 ## Obtaining data:
@@ -27,7 +9,14 @@ Wut project for Introduction to Machine Learning
 - In data_recordings there is also csv file with speaker id's, relative paths to recordings and labels
 
 
-## Notes
-- usage of melspectrograms is mandatory 
-- data exploration: we should avoid data leaks
-- data exploration: we should delete silent 'accepted' audio segments
+## Running the real time program:
+- Open the MainProgram/main_notebook.ipynb
+- Run all cells
+- Open the local link from the last cell output
+- If the model file is ready you can skip the cells that load data and train it
+
+## Running experiments:
+- To experiment, train different model variants and compare the results use notebook Model/Experiments_Runner
+
+## Exploratory data analysis:
+- For examining obtained data use notebook EDA/exploratory_data_analysis
