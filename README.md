@@ -14,3 +14,9 @@ Voice Classifier project for Introduction to Machine Learning
 - Run all cells
 - Open the local link from the last cell output
 - If the model file is ready you can skip the cells that load data and train it
+
+## Running experiments:
+- To experiment, train different model variants and compare the results use notebook Model/Experiments_Runner
+
+## Exploratory data analysis:
+- For examining obtained data use notebook EDA/exploratory_data_analysis
