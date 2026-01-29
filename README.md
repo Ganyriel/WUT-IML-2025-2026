@@ -41,3 +41,13 @@ and building manifest.
 3. Tested some variants in the Experiments notebook, including Baseline, Adam vs SGD
 4. Wrote section 3 (Exploratory data analysis) of the report.
 5. I implemented live demo example notebook and script shown at milestone 2, not gui (Live_demo)
+
+
+### Héctor Rodon Llaberia & Iñaki Gutiérrez-Mantilla López:
+1. Trained the final machine learning models used in the project.
+2. Performed systematic comparison of different model architectures, hyperparameters and training strategies to identify the best-performing configuration.
+3. Experimented with and evaluated multiple optimizers.
+4. Selected and validated the final trained model based on quantitative results and generalization behavior.
+5. Designed and implemented the graphical user interface (app_gui), integrating the trained model for user interaction and real-time inference.
+
+
