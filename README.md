@@ -25,11 +25,12 @@ Voice Classifier project for Introduction to Machine Learning
 
 ### Filip Filipkowski:
 
-1.Researched available datasets
-2.Implementated of the pipeline for obtaining initial data: all the scripts in DataPipelin directory, including downloading dataset, dividing the recordings into segments and directories,
+1. Researched available datasets
+2. Implementated of the pipeline for obtaining initial data: all the scripts in DataPipelin directory, including downloading dataset, dividing the recordings into segments and directories,
 and building manifest.
 3. Prepared manual recordings of own voice for the possibility of better manual testing.
 4. Implemented the logic of the train/validation/test split - the constraints to be satisfied are mentioned in the report
 5. Added and tested some variants in the Experiments notebook, including LR scheduling, weight decay and MC dropout
 6. Contributed to sections 2 and 4 of the report.
 7. Connected app_gui with the final notebook
+
