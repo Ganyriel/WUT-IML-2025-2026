@@ -34,3 +34,10 @@ and building manifest.
 6. Contributed to sections 2 and 4 of the report.
 7. Connected app_gui with the final notebook
 
+### Kuba Drażan:
+
+1. Exploratory data analysis notebooks (exploratory_data_analysis, error_analysis)
+2. I implemented engine for experiments, that tested several different models and saved results (Experiments_Runner)
+3. Tested some variants in the Experiments notebook, including Baseline, Adam vs SGD
+4. Wrote section 3 (Exploratory data analysis) of the report.
+5. I implemented live demo example notebook and script shown at milestone 2, not gui (Live_demo)
