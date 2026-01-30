@@ -57,9 +57,9 @@ and building manifest.
 2. Added silence removal
 3. Added uniformity of audio segments 
 4. Did a large part of the coordination
-5. Added some code for experimentation
+5. Added some minor code for experimentation
 6. Proofread most of the code
 7. Researched for improvements and reasons for possible errors (e.g. data leaks)
 8. Did some experimentation (hyper parameter tuning)
 9. Wrote a first draft of the report
-
+10. Improved code readability (added comments)
