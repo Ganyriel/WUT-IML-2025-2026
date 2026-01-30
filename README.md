@@ -52,3 +52,14 @@ and building manifest.
 5. Designed and implemented the graphical user interface (app_gui), integrating the trained model for user interaction and real-time inference.
 
 
+### Filip Sabbo-Golebiowski
+1. Created a file for creating spectrograms (not used in final version)
+2. Added silence removal
+3. Added uniformity of audio segments 
+4. Did a large part of the coordination
+5. Added some code for experimentation
+6. Proofread most of the code
+7. Researched for improvements and reasons for possible errors (e.g. data leaks)
+8. Did some experimentation (hyper parameter tuning)
+9. Wrote a first draft of the report
+
